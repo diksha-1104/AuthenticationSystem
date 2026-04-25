@@ -1,9 +1,9 @@
 import User from '../models/user.model.js';
+import config from '../config/config.js';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
-async function register(req,res){
-    
+export async function register(req,res){   
         const {username,email,password}=req.body; 
         const isAlreadyRegistered=await User.findOne({
             $or:[
@@ -25,7 +25,7 @@ async function register(req,res){
         });   
         const token=jwt.sign({
             id:newUser._id},
-            process.env.JWT_SECRET,
+            config.JWT_SECRET,
             {expiresIn:"1h"});
         res.status(201).json({
             success:true,
@@ -39,4 +39,21 @@ async function register(req,res){
         });
 }
 
-export {register};
+
+export async function getMe(req,res){
+    const token=req.headers.authorization?.split(" ")[1];
+    if(!token){
+        return res.status(401).json({
+            success:false,
+            message:"Authorization token is missing"
+        });
+    }
+    const decoded=jwt.verify(token,config.JWT_SECRET);
+    const user=await User.findById(decoded.id).select("-password");
+    res.status(200).json({
+        message:"User details fetched successfully",
+        success:true,
+        user:user.username,
+        email:user.email,
+    });
+}
